@@ -20,10 +20,13 @@ ppl = my_site.people.get_person(123)
 list_five = my_site.lists.get_list(5)
 
 """
-from .people import People
-from .tags import NBTags
-from .lists import Lists
-from .contacts import Contacts
+import argparse
+import json
+import os
+from people import People
+from tags import NBTags
+from lists import Lists
+from contacts import Contacts
 
 
 class NationBuilder(object):
@@ -70,3 +73,21 @@ def from_file(filename):
         if slug is not None and key is not None:
             return NationBuilder(slug, key)
         return None
+
+
+def get_nb_client_from_environment_variables() -> NationBuilder:
+    API_TOKEN = os.getenv("NATIONBUILDER_API_TOKEN")
+    SITE_SLUG = os.getenv("SITE_SLUG")
+    return NationBuilder(slug=SITE_SLUG, api_key=API_TOKEN)
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(
+        prog='NationBuilder client')
+    parser.add_argument("--person-id", type=int, help="The identifier for the person to retrieve")
+    args = parser.parse_args()
+    if args.person_id:
+        print(f"Fetching user {args.person_id}")
+        nb = get_nb_client_from_environment_variables()
+        person = nb.people.get_person(person_id=args.person_id)
+        print(json.dumps(person))

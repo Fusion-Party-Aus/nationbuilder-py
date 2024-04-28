@@ -19,8 +19,7 @@
 #    limitations under the License.
 #
 #
-
-from . import nb_api
+import nb_api
 import json
 
 
@@ -59,7 +58,7 @@ class Contacts(nb_api.NationBuilderApi):
         }
         }
         """
-        self._authorise()
+        self._authorize()
         url = self.GET_CONTACT_URL.format(nb_id)
         update = {
             "contact": {
@@ -78,10 +77,9 @@ class Contacts(nb_api.NationBuilderApi):
         update = json.dumps(update)
         print(str(update))
 
-        header, content = self.http.request(url, headers=self.HEADERS,
-                                            method='POST', body=str(update))
-        self._check_response(header, content, "Log Contact", url)
-        return json.loads(content)
+        response = self.session.post(url, headers=self.HEADERS, body=str(update))
+        self._check_response(response, "Log Contact", url)
+        return response.json()
 
     def get_person_contacts(self, nb_id, per_page=100):
         """
@@ -96,12 +94,12 @@ class Contacts(nb_api.NationBuilderApi):
         base_url = self.GET_CONTACT_URL.format(nb_id) + self.PAGINATE_QUERY
 
         def get_person_contact_page(page):
-            self._authorise()
+            self._authorize()
             url = base_url.format(page=page, per_page=per_page)
-            header, content = self.http.request(uri=url, headers=self.HEADERS)
+            response = self.session.get(url, headers=self.HEADERS)
             self._check_response(
-                header, content, "Get Person Contact page", url)
-            return json.loads(content)
+                response, "Get Person Contact page", url)
+            return response.json()
 
         first_page = get_person_contact_page(1)
         total_pages = first_page['total_pages']
@@ -169,8 +167,8 @@ class Contacts(nb_api.NationBuilderApi):
         Returns a list of contact status entries, which look like
         {'name': 'Bad Info', 'api_name': 'bad_info'}
         """
-        self._authorise()
+        self._authorize()
         url = self.CONTACT_STATUS_URL
-        hdr, cont = self.http.request(uri=url, headers=self.HEADERS)
-        self._check_response(hdr, cont, "List Contact Statuses", url)
-        return json.loads(cont)['results']
+        response = self.session.get(url, headers=self.HEADERS)
+        self._check_response(response, "List Contact Statuses", url)
+        return response.json()['results']

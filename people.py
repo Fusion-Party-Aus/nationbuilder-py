@@ -7,13 +7,12 @@ classes:
 
 """
 
-from .nb_api import NationBuilderApi
+from nb_api import NationBuilderApi
 import urllib.request, urllib.error, urllib.parse
 import json
 
 
 class People(NationBuilderApi):
-
     """
     Used to get at the People API
 
@@ -33,13 +32,14 @@ class People(NationBuilderApi):
         Returns:
             A person record, as a dict.
         """
-        self._authorise()
+        self._authorize()
         # we need it as a string...
         person_id = urllib.parse.quote(str(person_id))
         url = self.GET_PERSON_URL.format(person_id)
-        headers, content = self.http.request(url, headers=self.HEADERS)
-        self._check_response(headers, content, "Get Person", url)
-        return json.loads(content)
+        response = self.session.get(url, headers=self.HEADERS)
+        print(response)
+        self._check_response(response, "Get Person", url)
+        return response.json()
 
     def update_person(self, person_id, update_body):
         """
@@ -61,18 +61,18 @@ class People(NationBuilderApi):
         Returns:
             the updated person record.
         """
-        self._authorise()
+        self._authorize()
         url = self.UPDATE_PERSON_URL.format(urllib.parse.quote(str(person_id)))
         if isinstance(update_body, str):
             update_str = update_body
         else:
             update_str = json.dumps(update_body)
-        header, content = self.http.request(url, method="PUT",
-                                            body=update_str,
-                                            headers=self.HEADERS)
-        self._check_response(header, content,
+        response = self.session.post(url,
+                                 data=update_str,
+                                 headers=self.HEADERS)
+        self._check_response(response,
                              "Update person with id %d" % person_id, url)
-        return json.loads(content)
+        return response.json()
 
     def create_person(self, person_body):
         """
@@ -99,12 +99,11 @@ class People(NationBuilderApi):
 
         Returns a dict-like representation of the person's complete record.
         """
-        self._authorise()
+        self._authorize()
         url = self.GET_PEOPLE_URL
-        header, content = self.http.request(uri=url, headers=self.HEADERS,
-                                            method='POST')
-        self._check_response(header, content, "Create person", url)
-        return json.loads(content)
+        response = self.session.post(url, headers=self.HEADERS)
+        self._check_response(response, "Create person", url)
+        return response.json()
 
     def set_recruiter_id(self, person_id, recruiter_id):
         """
@@ -152,15 +151,15 @@ class People(NationBuilderApi):
 
         To find people that have non-unique attributes, use search()
         """
-        self._authorise()
+        self._authorize()
         # turn the kwargs into url-style ones. k1=v1&k2=v2...
         keyvals = ['='.join((urllib.parse.quote(key), urllib.parse.quote(val)))
                    for key, val in kwargs.items()]
         query_string = '&'.join(keyvals)
         url = self.MATCH_PERSON_URL + query_string
-        hdr, cnt = self.http.request(url, headers=self.HEADERS)
-        self._check_response(hdr, cnt, "Match %s" % kwargs, url)
-        return json.loads(cnt)
+        response = self.session.get(url, headers=self.HEADERS)
+        self._check_response(response, "Match %s" % kwargs, url)
+        return response.json()
 
     def search(self, per_page=100, **kwargs):
         """
@@ -180,16 +179,16 @@ class People(NationBuilderApi):
 
         Returns a list of abbreviated person records.
         """
-        self._authorise()
+        self._authorize()
         keyvals = ['='.join((urllib.parse.quote(key), urllib.parse.quote(val)))
                    for key, val in kwargs.items()]
         query = self.SEARCH_PERSON_URL + '&' + '&'.join(keyvals)
 
         def get_search_page(page):
             url = query.format(page=page, per_page=per_page)
-            hdr, cnt = self.http.request(uri=url, headers=self.HEADERS)
-            self._check_response(hdr, cnt, "Search %s" % keyvals, url)
-            return json.loads(cnt)
+            response = self.session.get(url, headers=self.HEADERS)
+            self._check_response(response, "Search %s" % keyvals, url)
+            return response.json()
 
         first_page = get_search_page(1)
         total_pages = first_page['total_pages']
@@ -207,19 +206,19 @@ class People(NationBuilderApi):
 
         Returns: A person record or None if no match.
         """
-        self._authorise()
+        self._authorize()
         url = self.MATCH_EMAIL_URL.format(urllib.parse.quote(email))
-        header, content = self.http.request(url, headers=self.HEADERS)
-        if header.status == 400:
-            if json.loads(content)['code'] == 'no_matches':
+        response = self.session.get(url, headers=self.HEADERS)
+        if response.status_code == 400:
+            if response.json()['code'] == 'no_matches':
                 return None
             else:
-                self._check_response(header, content,
+                self._check_response(response,
                                      "Get person by email", url)
-        elif header.status == 200:
-            return json.loads(content)
+        elif response.status_code == 200:
+            return response.json()
         else:
-            self._check_response(header, content, "Get person by email", url)
+            self._check_response(response, "Get person by email", url)
 
     def get_id_by_email(self, email):
         """
@@ -240,10 +239,10 @@ class People(NationBuilderApi):
 
         Returns None
         """
-        self._authorise()
+        self._authorize()
         url = self.REGISTER_PERSON_URL.format(urllib.parse.quote(nb_id))
-        hdr, content = self.http.request(url, headers=self.HEADERS)
-        self._check_response(hdr, content,
+        response = self.session.get(url, headers=self.HEADERS)
+        self._check_response(response,
                              "Do registration for ID %d" % nb_id, url)
 
     def delete_person(self, nb_id):
@@ -256,11 +255,10 @@ class People(NationBuilderApi):
         Returns:
             None
         """
-        self._authorise()
+        self._authorize()
         url = self.GET_PERSON_URL.format(str(nb_id))
-        hdr, cnt = self.http.request(uri=url, method="DELETE",
-                                     headers=self.HEADERS)
-        self._check_response(hdr, cnt, "Delete user %d" % nb_id, url)
+        response = self.session.delete(url, headers=self.HEADERS)
+        self._check_response(response, "Delete user %d" % nb_id, url)
 
     def get_people_iter(self, per_page=100):
         """
@@ -276,15 +274,17 @@ class People(NationBuilderApi):
         Note that the returned people records are abbreviated records. To get
         the full record use get_person() with the NB ID from this record.
         """
+
         # TODO: it would be nice to fetch the next page asynchronously
         # before it is needed.
         def get_people_page(page):
-            self._authorise()
+            self._authorize()
             url = self.GET_PEOPLE_URL + self.PAGINATE_QUERY.format(
                 page=page, per_page=per_page)
-            hdr, cnt = self.http.request(uri=url, headers=self.HEADERS)
-            self._check_response(hdr, cnt, "Get people page %d" % page, url)
-            return json.loads(cnt)
+            response = self.session.get(url, headers=self.HEADERS)
+            self._check_response(response, "Get people page %d" % page, url)
+            return response.json()
+
         # need to get the first page before to see the range
         page = get_people_page(1)
         total_pages = page['total_pages']
@@ -309,7 +309,7 @@ class People(NationBuilderApi):
         Returns:
             a list of people records.
         """
-        self._authorise()
+        self._authorize()
         km = 0.621371
         if use_km:
             dist = dist * km
@@ -317,9 +317,9 @@ class People(NationBuilderApi):
         def get_nearby_page(page):
             url = self.NEARBY_URL.format(lat=lat, lng=lng, dist=dist,
                                          per_page=per_page, page=page)
-            hdr, cnt = self.http.request(uri=url, headers=self.HEADERS)
-            self._check_response(hdr, cnt, "Get nearby", url)
-            return json.loads(cnt)
+            response = self.session.get(url, headers=self.HEADERS)
+            self._check_response(response, "Get nearby", url)
+            return response.json()
 
         first_page = get_nearby_page(1)
         total_pages = first_page['total_pages']
@@ -329,12 +329,10 @@ class People(NationBuilderApi):
 
         return result
 
-    
     def me(self):
         """Fetches the Access token owner's profile"""
-        self._authorise()
+        self._authorize()
         url = self.GET_PEOPLE_URL + '/me'
-        hdr, cnt = self.http.request(uri=url, headers=self.HEADERS)
-        self._check_response(hdr, cnt, 'Get Me', url)
-        return json.loads(cnt)
-        
+        response = self.session.get(url, headers=self.HEADERS)
+        self._check_response(response, 'Get Me', url)
+        return response.json()

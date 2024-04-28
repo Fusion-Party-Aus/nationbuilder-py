@@ -18,7 +18,7 @@
 #    See the License for the specific language governing permissions and
 #    limitations under the License.
 
-from .nb_api import NationBuilderApi
+from nb_api import NationBuilderApi
 
 import json
 import logging
@@ -38,8 +38,7 @@ class Lists(NationBuilderApi):
         """
         Get all of the lists in the nation.
         """
-        res = self._list_list_page(page=1, per_page=per_page)
-        jres = json.loads(res)
+        jres = self._list_list_page(page=1, per_page=per_page)
         i = 2
         while i <= jres['total_pages']:
             self.logger.debug("getting page %i of %i", i, jres['total_pages'])
@@ -56,11 +55,11 @@ class Lists(NationBuilderApi):
 
     def _list_list_page(self, page=1, per_page=100):
         """Gets a list of nb_lists available in NB Will do a max of 100."""
-        self._authorise()
+        self._authorize()
         url = self.LIST_INDEX_URL.format(page=page, per_page=per_page)
-        hdr, content = self.http.request(url, headers=self.HEADERS)
-        self._check_response(hdr, content, url)
-        return content
+        response = self.session.get(url, headers=self.HEADERS)
+        self._check_response(response, url)
+        return response.json()
 
     def get_list_page(self, list_id, page_num=1, per_page=50):
         """
@@ -71,12 +70,12 @@ class Lists(NationBuilderApi):
             page_num: the page number (>= 1)
             per_page: the number of entries to show per page. (<= 100)
             """
-        self._authorise()
+        self._authorize()
         url = self.GET_LIST_URL.format(
             list_id=list_id, per_page=per_page, page=page_num)
-        header, content = self.http.request(url, headers=self.HEADERS)
-        self._check_response(header, content, url)
-        return json.loads(content)
+        response = self.session.get(url, headers=self.HEADERS)
+        self._check_response(response, url)
+        return response.json()
 
     def get_list(self, list_id, per_page=50):
         """
@@ -85,15 +84,15 @@ class Lists(NationBuilderApi):
 
         returns a json array of person records."""
         # TODO make it a bit more efficient somehow.
-        self._authorise()
+        self._authorize()
         page = 1
         lists = []  # Make it a set to avoid duplicates.
         while True:
             url = self.GET_LIST_URL.format(list_id=list_id,
                                            per_page=per_page, page=page)
-            header, content = self.http.request(url, headers=self.HEADERS)
-            self._check_response(header, content, "Get list", url)
-            content = json.loads(content)
+            response = self.session.get(url, headers=self.HEADERS)
+            self._check_response(response, "Get list", url)
+            content = response.json()
             lists.extend(content['results'])
             page += 1
             if page > content['total_pages']:
@@ -107,14 +106,14 @@ class Lists(NationBuilderApi):
         Generator function that gets the people in a list. may be more
         efficient than get_list() in some cases.
         """
-        self._authorise()
+        self._authorize()
         page = 1
         while True:
             url = self.GET_LIST_URL.format(list_id=list_id,
                                            per_page=per_page, page=page)
-            header, content = self.http.request(url, headers=self.HEADERS)
-            self._check_response(header, content, "Get list", url)
-            content = json.loads(content)
+            response = self.session.get(url, headers=self.HEADERS)
+            self._check_response(response, "Get list", url)
+            content = response.json()
             for person in content['results']:
                 yield person
             page += 1

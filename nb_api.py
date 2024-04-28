@@ -45,8 +45,15 @@ print tags
 """
 
 import logging
-import httplib2
-from oauth2client.client import AccessTokenCredentials
+import os
+from typing import Optional
+
+import requests
+from google.auth.transport.requests import AuthorizedSession
+from google.oauth2.credentials import Credentials
+
+API_TOKEN = os.getenv("NATIONBUILDER_API_TOKEN")
+SITE_SLUG = "futureparty"
 
 log = logging.getLogger('nbpy')
 
@@ -101,45 +108,37 @@ class NationBuilderApi(object):
             "Accept": "application/json",
             "User-Agent": self.USER_AGENT,
         }
-        self.http = None
+        self.session: Optional[AuthorizedSession] = None
 
-    def _check_response(self, headers, content, attempted_action, url=None):
+    def _check_response(self, response: requests.Response, attempted_action: str, url=None):
         """Log a warning if this is not a 200 OK response,
         otherwise log the response at debug level"""
-        if headers.status < 200 or headers.status > 299:
-            self._raise_error(attempted_action, headers, content, url)
+        if response.status_code < 200 or response.status_code > 299:
+            self._raise_error(attempted_action, response, url)
         else:
             log.debug("Request to %s successful.",
                       url or attempted_action or "Unknown")
 
-    def _raise_error(self, msg, header, body, url):
+    def _raise_error(self, msg, response: requests.Response, url):
         """Raises the correct type of exception."""
         error_map = {
             404: NBNotFoundError,
             400: NBBadRequestError
         }
-        err = error_map.get(header.status) or NBResponseError
-        raise err(msg, header, body, url)
+        err = error_map.get(response.status_code) or NBResponseError
+        raise err(msg, response.headers, response.text, url)
 
-    def _authorise(self):
-        """Gets AccessTokenCredentials with the ACCESS_TOKEN and USER_AGENT and
-        authorises a httplib2 http object.
+    def _authorize(self):
+        """Gets Credentials with the ACCESS_TOKEN and authorises an AuthorizedSession.
 
         If this has already been done, does nothing."""
-        if self.http is not None:
+        if self.session is not None:
             return
         assert self.ACCESS_TOKEN is not None
 
-        # if cred.user_agent is not none, then it adds appends the
-        # user-agent to the end of the existing user-agent string
-        # each time request() is called...
-        # ...Until you get a "headers too long" error.
-        # so make it None
-        cred = AccessTokenCredentials(self.ACCESS_TOKEN, None)
-
-        # NationBuilder has a lot of problems with their SSL certs...
-        self.http = httplib2.Http(disable_ssl_certificate_validation=True)
-        self.http = cred.authorize(self.http)
+        cred = Credentials(self.ACCESS_TOKEN)
+        self.session = AuthorizedSession(cred)
+        self.session.verify = False  # Disable SSL certificate verification
 
 
 class NBResponseError(Exception):

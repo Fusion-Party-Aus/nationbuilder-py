@@ -24,7 +24,7 @@ People Tags API. See http://nationbuilder.com/people_tags_api for more details.
 """
 
 import urllib.request, urllib.error, urllib.parse
-from .nb_api import NationBuilderApi
+from nb_api import NationBuilderApi
 import json
 
 
@@ -46,14 +46,14 @@ class NBTags(NationBuilderApi):
         Returns:
             a list of people records.
         """
-        self._authorise()
+        self._authorize()
         page = 1
         url = self.GET_BY_TAG_URL.format(tag=urllib.parse.quote(str(tag), ''),
                                          page=page,
                                          per_page=str(per_page))
-        header, content = self.http.request(url, headers=self.HEADERS)
-        self._check_response(header, content, "Get people by tag", url)
-        content = json.loads(content)
+        response = self.session.get(url, headers=self.HEADERS)
+        self._check_response(response, "Get people by tag", url)
+        content = response.json()
         people = content['results']
         num_pages = content['total_pages']
         while page < num_pages:
@@ -61,9 +61,9 @@ class NBTags(NationBuilderApi):
             url = self.GET_BY_TAG_URL.format(tag=str(tag),
                                              page=page,
                                              per_page=str(per_page))
-            header, content = self.http.request(url, headers=self.HEADERS)
-            self._check_response(header, content, "Get people by tag", url)
-            content = json.loads(content)
+            response = self.session.get(url, headers=self.HEADERS)
+            self._check_response(response, "Get people by tag", url)
+            content = response.json()
             people.extend(content['results'])
         return people
 
@@ -77,12 +77,12 @@ class NBTags(NationBuilderApi):
         Returns:
             a (possibly empty) list of tags.
         """
-        self._authorise()
+        self._authorize()
         url = self.PERSON_TAGS_URL.format(str(person_id))
-        headers, content = self.http.request(url, headers=self.HEADERS)
-        self._check_response(headers, content,
+        response = self.session.get(url, headers=self.HEADERS)
+        self._check_response(response,
                              "Get Person %d Tags" % person_id, url)
-        return json.loads(content)['taggings']
+        return response.json()['taggings']
 
     def list_tags(self, tags_per_page=100):
         """
@@ -94,14 +94,15 @@ class NBTags(NationBuilderApi):
         Returns:
             a list of tags.
         """
+
         def get_list_tags_page(tags_per_page, page_num):
             # gets a page of results of the tag list
-            self._authorise()
+            self._authorize()
             url = self.LIST_TAGS_URL.format(page=str(page_num),
                                             per_page=str(tags_per_page))
-            header, content = self.http.request(url, headers=self.HEADERS)
-            self._check_response(header, content, "Get tags page", url)
-            return json.loads(content)
+            response = self.session.get(url, headers=self.HEADERS)
+            self._check_response(response, "Get tags page", url)
+            return response.json()
 
         page = get_list_tags_page(tags_per_page, 1)
         tags = [tag['name'] for tag in page['results']]
@@ -124,12 +125,12 @@ class NBTags(NationBuilderApi):
         Returns:
             None.
         """
-        self._authorise()
+        self._authorize()
         url = self.REMOVE_TAG_URL.format(urllib.parse.quote(str(person_id)),
                                          urllib.parse.quote(str(tag)))
-        hdr, cnt = self.http.request(url, method="DELETE",
-                                     headers=self.HEADERS)
-        self._check_response(hdr, cnt,
+        response = self.session.get(url, method="DELETE",
+                                    headers=self.HEADERS)
+        self._check_response(response,
                              "Remove Tag '%s' from id %d" % (tag, person_id),
                              url)
 
@@ -146,17 +147,17 @@ class NBTags(NationBuilderApi):
         Returns:
             A Dictionary-like object of the person's tags after the addition.
         """
-        self._authorise()
+        self._authorize()
         url = self.PERSON_TAGS_URL.format(str(nb_id))
         body = {
             "tagging":
-            {"tag": urllib.parse.quote(tag)}
+                {"tag": urllib.parse.quote(tag)}
         }
-        hdr, cnt = self.http.request(url, method="PUT",
-                                     headers=self.HEADERS,
-                                     body=json.dumps(body))
-        self._check_response(hdr, cnt,
+        response = self.session.put(url,
+                                    headers=self.HEADERS,
+                                    body=json.dumps(body))
+        self._check_response(response,
                              "Tag %d with '%s'" % (nb_id, tag),
                              url)
-        return json.loads(cnt)
+        return response.json()
         # TODO: check that the returned content includes the tag.
