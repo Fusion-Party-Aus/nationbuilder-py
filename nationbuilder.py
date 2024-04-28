@@ -20,10 +20,10 @@ ppl = my_site.people.get_person(123)
 list_five = my_site.lists.get_list(5)
 
 """
-from people import People
-from tags import NBTags
-from lists import Lists
-from contacts import Contacts
+from .people import People
+from .tags import NBTags
+from .lists import Lists
+from .contacts import Contacts
 
 
 class NationBuilder(object):
