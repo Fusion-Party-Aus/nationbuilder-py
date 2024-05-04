@@ -53,7 +53,7 @@ from google.auth.transport.requests import AuthorizedSession
 from google.oauth2.credentials import Credentials
 
 API_TOKEN = os.getenv("NATIONBUILDER_API_TOKEN")
-SITE_SLUG = os.getenv("NATIONBUILDER_SITE_SLUG", "futureparty")
+SITE_SLUG = os.getenv("NATIONBUILDER_SITE_SLUG", "fusion")  # futureparty is the Science Party
 
 log = logging.getLogger('nbpy')
 
@@ -75,6 +75,17 @@ class NationBuilderApi(object):
         self.BASE_URL = ''.join(['https://', self.NATION_SLUG,
                                  '.nationbuilder.com/api/v1'])
         self.PAGINATE_QUERY = "?page={page}&per_page={per_page}"
+
+        # https://nationbuilder.com/blogs_api
+        self.BLOGS_URL = self.BASE_URL + '/sites/{0}/pages/blogs'
+        self.BLOG_POSTS_URL = self.BLOGS_URL + '{1}/posts'
+
+        # List API URLs
+        self.LIST_INDEX_URL = self.BASE_URL + '/lists' + self.PAGINATE_QUERY
+        self.GET_LIST_URL = ''.join((self.BASE_URL, '/lists/{list_id}/people',
+                                     self.PAGINATE_QUERY))
+        # https://nationbuilder.com/basic_pages_api
+        self.PAGES_URL = self.BASE_URL + '/sites/{0}/pages/basic_pages'
         # People API URLs.
         self.GET_PEOPLE_URL = self.BASE_URL + '/people'
         self.GET_PERSON_URL = self.GET_PEOPLE_URL + '/{0}'
@@ -87,31 +98,21 @@ class NationBuilderApi(object):
                            + '&distance={dist}')
         self.UPDATE_PERSON_URL = self.GET_PERSON_URL
         self.REGISTER_PERSON_URL = self.GET_PERSON_URL + "/register"
-        # Tags API URLs
-        self.PERSON_TAGS_URL = self.GET_PERSON_URL + "/taggings"
-        self.REMOVE_TAG_URL = self.PERSON_TAGS_URL + "/{1}"
-        self.LIST_TAGS_URL = self.BASE_URL + "/tags" + self.PAGINATE_QUERY
-        self.GET_BY_TAG_URL = ''.join((self.BASE_URL, "/tags/{tag}/people",
-                                       self.PAGINATE_QUERY))
-        # List API URLs
-        self.LIST_INDEX_URL = self.BASE_URL + '/lists' + self.PAGINATE_QUERY
-        self.GET_LIST_URL = ''.join((self.BASE_URL, '/lists/{list_id}/people',
-                                     self.PAGINATE_QUERY))
+
         # Contacts API URLs
         self.GET_CONTACT_URL = self.GET_PERSON_URL + "/contacts"
         self.CONTACT_TYPES_URL = self.BASE_URL + '/settings/contact_types'
         self.UPDATE_CONTACT_TYPE_URL = self.CONTACT_TYPES_URL + '/{id}'
         self.CONTACT_METHODS_URL = self.BASE_URL + '/settings/contact_methods'
         self.CONTACT_STATUS_URL = self.BASE_URL + '/settings/contact_statuses'
-
         # https://nationbuilder.com/sites_api
         self.SITES_URL = self.BASE_URL + '/sites'
-
-        # https://nationbuilder.com/basic_pages_api
-        self.PAGES_URL = self.BASE_URL + '/sites/{0}/pages/basic_pages'
-
-        # https://nationbuilder.com/blogs_api
-        self.BLOGS_URL = self.BASE_URL + '/sites/{0}/pages/blogs'
+        # Tags API URLs
+        self.PERSON_TAGS_URL = self.GET_PERSON_URL + "/taggings"
+        self.REMOVE_TAG_URL = self.PERSON_TAGS_URL + "/{1}"
+        self.LIST_TAGS_URL = self.BASE_URL + "/tags" + self.PAGINATE_QUERY
+        self.GET_BY_TAG_URL = ''.join((self.BASE_URL, "/tags/{tag}/people",
+                                       self.PAGINATE_QUERY))
 
         self.USER_AGENT = "nbpy/0.2"
 

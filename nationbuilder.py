@@ -24,6 +24,7 @@ import argparse
 import json
 import os
 
+from blog import Blog
 from nb_api import SITE_SLUG
 from pages import Pages
 from people import People
@@ -45,7 +46,7 @@ class NationBuilder(object):
 
     def __init__(self, slug, api_key):
         super(NationBuilder, self).__init__()
-
+        self.blog_posts = Blog(slug, api_key)
         self.contacts = Contacts(slug, api_key)
         self.lists = Lists(slug, api_key)
         self.pages = Pages(slug, api_key)
@@ -110,6 +111,27 @@ def handle_pages(args):
         break
     print(json.dumps(pages))
     return pages
+
+
+def handle_blog_posts(args):
+    nb = get_nb_client_from_environment_variables()
+    blog_posts = None
+    next_page_url = None
+    destination_site_slug = getattr(args, 'destination_site_slug', None)
+    while blog_posts is None or (blog_posts["results"] and blog_posts["next"] and destination_site_slug):
+        if next_page_url:
+            blog_posts = nb.blog_posts.get_next_blog_posts(next_page_url)
+        else:
+            blog_posts = nb.blog_posts.get_blog_posts(site_slug=getattr(args, "site_slug", ""))
+        if destination_site_slug:
+            for page in blog_posts["results"]:
+                created = nb.blog_posts.create_blog_post(site_slug=destination_site_slug, blog_post=page)
+                if created:
+                    print(f"Created {destination_site_slug}: {page['slug']} ({page['name']})")
+                break
+        break
+    print(json.dumps(blog_posts))
+    return blog_posts
 
 
 if __name__ == "__main__":
