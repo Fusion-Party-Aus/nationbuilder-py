@@ -23,6 +23,9 @@ list_five = my_site.lists.get_list(5)
 import argparse
 import json
 import os
+
+from nb_api import SITE_SLUG
+from pages import Pages
 from people import People
 from tags import NBTags
 from lists import Lists
@@ -43,10 +46,12 @@ class NationBuilder(object):
     def __init__(self, slug, api_key):
         super(NationBuilder, self).__init__()
 
+        self.contacts = Contacts(slug, api_key)
+        self.lists = Lists(slug, api_key)
+        self.pages = Pages(slug, api_key)
         self.people = People(slug, api_key)
         self.tags = NBTags(slug, api_key)
-        self.lists = Lists(slug, api_key)
-        self.contacts = Contacts(slug, api_key)
+        # todo: there are other things like pages
 
 
 def from_file(filename):
@@ -77,17 +82,38 @@ def from_file(filename):
 
 def get_nb_client_from_environment_variables() -> NationBuilder:
     API_TOKEN = os.getenv("NATIONBUILDER_API_TOKEN")
-    SITE_SLUG = os.getenv("SITE_SLUG")
-    return NationBuilder(slug=SITE_SLUG, api_key=API_TOKEN)
+    NATION_SLUG = os.getenv("NATION_SLUG")
+    return NationBuilder(slug=NATION_SLUG, api_key=API_TOKEN)
+
+
+def handle_people(args):
+    nb = get_nb_client_from_environment_variables()
+    person = nb.people.get_person(person_id=args.person_id)
+    print(json.dumps(person))
+
+
+def handle_pages(args):
+    nb = get_nb_client_from_environment_variables()
+    pages = None
+    while pages is None or (pages["results"] and pages["next"]):
+        pages = nb.pages.get_pages(site_name=getattr(args, "site_slug", ""))
+        break  # todo: continue
+    print(json.dumps(pages))
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         prog='NationBuilder client')
-    parser.add_argument("--person-id", type=int, help="The identifier for the person to retrieve")
+    subparsers = parser.add_subparsers(dest="command")
+    people_parser = subparsers.add_parser("people")
+    people_parser.add_argument("--person-id", type=int, help="The identifier for the person to retrieve")
+    people_parser.set_defaults(func=handle_people)
+    # todo: copy basic pages from one site to another.
+    page_parser = subparsers.add_parser("pages")
+    page_parser.add_argument("--site-slug", default=SITE_SLUG, type=str, help="The site to consult for pages")
+    page_parser.set_defaults(func=handle_pages)
     args = parser.parse_args()
-    if args.person_id:
-        print(f"Fetching user {args.person_id}")
-        nb = get_nb_client_from_environment_variables()
-        person = nb.people.get_person(person_id=args.person_id)
-        print(json.dumps(person))
+    if hasattr(args, "func"):
+        args.func(args)
+    else:
+        parser.print_help()

@@ -21,7 +21,6 @@
 from nb_api import NationBuilderApi
 
 import json
-import logging
 
 
 class Lists(NationBuilderApi):
@@ -32,7 +31,6 @@ class Lists(NationBuilderApi):
 
     def __init__(self, nation_slug, api_key):
         super(Lists, self).__init__(nation_slug, api_key)
-        self.logger = logging.getLogger(__name__)
 
     def list_lists(self, per_page=100):
         """

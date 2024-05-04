@@ -37,7 +37,6 @@ class People(NationBuilderApi):
         person_id = urllib.parse.quote(str(person_id))
         url = self.GET_PERSON_URL.format(person_id)
         response = self.session.get(url, headers=self.HEADERS)
-        print(response)
         self._check_response(response, "Get Person", url)
         return response.json()
 

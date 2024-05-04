@@ -53,15 +53,18 @@ from google.auth.transport.requests import AuthorizedSession
 from google.oauth2.credentials import Credentials
 
 API_TOKEN = os.getenv("NATIONBUILDER_API_TOKEN")
-SITE_SLUG = "futureparty"
+SITE_SLUG = os.getenv("NATIONBUILDER_SITE_SLUG", "futureparty")
 
 log = logging.getLogger('nbpy')
 
 
 class NationBuilderApi(object):
+    # https://nationbuilder.com/api_documentation
 
     def __init__(self, nation_slug, api_key):
-        """Create a NationBuilder Connection.
+        """
+        Create a NationBuilder Connection. All of the base URLs need to be here rather than the child classes since
+        they reference each other a bit.
 
         Parameters:
             slug : the nation slug (e.g. foo in foo.nationbuilder.com)
@@ -100,6 +103,15 @@ class NationBuilderApi(object):
         self.UPDATE_CONTACT_TYPE_URL = self.CONTACT_TYPES_URL + '/{id}'
         self.CONTACT_METHODS_URL = self.BASE_URL + '/settings/contact_methods'
         self.CONTACT_STATUS_URL = self.BASE_URL + '/settings/contact_statuses'
+
+        # https://nationbuilder.com/sites_api
+        self.SITES_URL = self.BASE_URL + '/sites'
+
+        # https://nationbuilder.com/basic_pages_api
+        self.PAGES_URL = self.BASE_URL + '/sites/{0}/pages/basic_pages'
+
+        # https://nationbuilder.com/blogs_api
+        self.BLOGS_URL = self.BASE_URL + '/sites/{0}/pages/blogs'
 
         self.USER_AGENT = "nbpy/0.2"
 
