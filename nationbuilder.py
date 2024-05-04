@@ -51,7 +51,6 @@ class NationBuilder(object):
         self.pages = Pages(slug, api_key)
         self.people = People(slug, api_key)
         self.tags = NBTags(slug, api_key)
-        # todo: there are other things like pages
 
 
 def from_file(filename):
@@ -95,10 +94,22 @@ def handle_people(args):
 def handle_pages(args):
     nb = get_nb_client_from_environment_variables()
     pages = None
-    while pages is None or (pages["results"] and pages["next"]):
-        pages = nb.pages.get_pages(site_name=getattr(args, "site_slug", ""))
-        break  # todo: continue
+    next_page_url = None
+    destination_site_slug = getattr(args, 'destination_site_slug', None)
+    while pages is None or (pages["results"] and pages["next"] and destination_site_slug):
+        if next_page_url:
+            pages = nb.pages.get_next_pages(next_page_url)
+        else:
+            pages = nb.pages.get_pages(site_slug=getattr(args, "site_slug", ""))
+        if destination_site_slug:
+            for page in pages["results"]:
+                created = nb.pages.create_page(site_slug=destination_site_slug, page=page)
+                if created:
+                    print(f"Created {destination_site_slug}: {page['slug']} ({page['name']})")
+                break
+        break
     print(json.dumps(pages))
+    return pages
 
 
 if __name__ == "__main__":
@@ -111,6 +122,8 @@ if __name__ == "__main__":
     # todo: copy basic pages from one site to another.
     page_parser = subparsers.add_parser("pages")
     page_parser.add_argument("--site-slug", default=SITE_SLUG, type=str, help="The site to consult for pages")
+    page_parser.add_argument("--destination-site-slug", default=SITE_SLUG, type=str,
+                             help="Copy the original pages to this destination")
     page_parser.set_defaults(func=handle_pages)
     args = parser.parse_args()
     if hasattr(args, "func"):

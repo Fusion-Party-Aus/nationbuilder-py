@@ -27,9 +27,19 @@ class Pages(NationBuilderApi):
         self._check_response(response, "Get sites", url)
         return response.json()
 
-    def get_pages(self, site_name: str, limit: Optional[int] = 100):
+    def get_pages(self, site_slug: str, limit: Optional[int] = 100):
         self._authorize()
-        url = self.PAGES_URL.format(site_name)
+        url = self.PAGES_URL.format(site_slug)
         response = self.session.get(url, headers=self.HEADERS, params={"limit": limit})
         self._check_response(response, "Get pages", url)
+        return response.json()
+
+    def get_next_pages(self, url, limit: Optional[int] = 100):
+        response = self.session.get(url, headers=self.HEADERS, params={"limit": limit})
+        self._check_response(response, "Get pages", url)
+
+    def create_page(self, site_slug: str, page: dict, page_type="basic_page"):
+        self._authorize()
+        url = self.PAGES_URL.format(site_slug)
+        response = self.session.post(url, headers=self.HEADERS, json={page_type: page})
         return response.json()

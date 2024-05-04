@@ -122,11 +122,16 @@ class NationBuilderApi(object):
         }
         self.session: Optional[AuthorizedSession] = None
 
-    def _check_response(self, response: requests.Response, attempted_action: str, url=None):
+    def get_response_from_authenticated_call(self, url: str, params: dict) -> dict:
+        response = self.session.get(url, headers=self.HEADERS, params=params)
+        self._check_response(response=response, attempted_action=None, url=url)
+        return response.json()
+
+    def _check_response(self, response: requests.Response, attempted_action: Optional[str], url=None):
         """Log a warning if this is not a 200 OK response,
         otherwise log the response at debug level"""
         if response.status_code < 200 or response.status_code > 299:
-            self._raise_error(attempted_action, response, url)
+            self._raise_error(attempted_action or "Unknown action", response, url)
         else:
             log.debug("Request to %s successful.",
                       url or attempted_action or "Unknown")
