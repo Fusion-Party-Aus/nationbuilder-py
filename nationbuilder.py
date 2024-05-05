@@ -24,6 +24,7 @@ import argparse
 import json
 import os
 
+from blog import Blog
 from nb_api import SITE_SLUG
 from pages import Pages
 from people import People
@@ -45,7 +46,7 @@ class NationBuilder(object):
 
     def __init__(self, slug, api_key):
         super(NationBuilder, self).__init__()
-
+        self.blog_posts = Blog(slug, api_key)
         self.contacts = Contacts(slug, api_key)
         self.lists = Lists(slug, api_key)
         self.pages = Pages(slug, api_key)
@@ -80,9 +81,9 @@ def from_file(filename):
 
 
 def get_nb_client_from_environment_variables() -> NationBuilder:
-    API_TOKEN = os.getenv("NATIONBUILDER_API_TOKEN")
-    NATION_SLUG = os.getenv("NATION_SLUG")
-    return NationBuilder(slug=NATION_SLUG, api_key=API_TOKEN)
+    api_token = os.getenv("NATIONBUILDER_API_TOKEN")
+    nation_slug = os.getenv("NATION_SLUG")
+    return NationBuilder(slug=nation_slug, api_key=api_token)
 
 
 def handle_people(args):
@@ -106,16 +107,49 @@ def handle_pages(args):
                 created = nb.pages.create_page(site_slug=destination_site_slug, page=page)
                 if created:
                     print(f"Created {destination_site_slug}: {page['slug']} ({page['name']})")
-                break
         break
     print(json.dumps(pages))
     return pages
 
 
+def handle_blog_posts(args):
+    nb = get_nb_client_from_environment_variables()
+    source_site = args.site_slug
+    destination_site_slug = getattr(args, 'destination_site_slug', None)
+    blogs = nb.blog_posts.get_blogs(site_slug=source_site)  # Assert there is 1 page of blogs
+    if not blogs:
+        print(f"No blogs are present at {source_site}")
+        return
+    for blog in blogs["results"]:
+        if destination_site_slug:
+            created_blog = nb.blog_posts.create_blog(site_slug=destination_site_slug, blog=blog)
+            print(f"Created a blog at {destination_site_slug}: {created_blog}")
+        blog_posts = None
+        next_page_url = None
+        while blog_posts is None or (blog_posts["results"] and blog_posts["next"] and destination_site_slug):
+            if next_page_url:
+                blog_posts = nb.blog_posts.get_next_blog_posts(next_page_url)
+            else:
+                blog_posts = nb.blog_posts.get_blog_posts(source_site, blog_id=blog["id"])
+            if destination_site_slug:
+                for blog_post in blog_posts["results"]:
+                    if blog_post.get("status") in ("archived"):
+                        # This request would fail
+                        continue
+                    created = nb.blog_posts.create_blog_post(site_slug=destination_site_slug, blog_id=blog["id"], blog_post=blog_post)
+                    if created:
+                        print(f"Created {destination_site_slug}: {blog_post['slug']} ({blog_post['name']})")
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        prog='NationBuilder client')
+        prog='NationBuilder client, mainly for cloning sites')
     subparsers = parser.add_subparsers(dest="command")
+    blog_parser = subparsers.add_parser("blogs")
+    blog_parser.add_argument("--site-slug", default=SITE_SLUG, type=str, help="The site to consult for blogs")
+    blog_parser.add_argument("--destination-site-slug", default=SITE_SLUG, type=str,
+                             help="Copy the original blogs to this destination")
+    blog_parser.set_defaults(func=handle_blog_posts)
     people_parser = subparsers.add_parser("people")
     people_parser.add_argument("--person-id", type=int, help="The identifier for the person to retrieve")
     people_parser.set_defaults(func=handle_people)

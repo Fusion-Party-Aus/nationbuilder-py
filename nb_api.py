@@ -53,7 +53,7 @@ from google.auth.transport.requests import AuthorizedSession
 from google.oauth2.credentials import Credentials
 
 API_TOKEN = os.getenv("NATIONBUILDER_API_TOKEN")
-SITE_SLUG = os.getenv("NATIONBUILDER_SITE_SLUG", "futureparty")
+SITE_SLUG = os.getenv("NATIONBUILDER_SITE_SLUG", "fusion")  # futureparty is the Science Party
 
 log = logging.getLogger('nbpy')
 
@@ -75,6 +75,17 @@ class NationBuilderApi(object):
         self.BASE_URL = ''.join(['https://', self.NATION_SLUG,
                                  '.nationbuilder.com/api/v1'])
         self.PAGINATE_QUERY = "?page={page}&per_page={per_page}"
+
+        # https://nationbuilder.com/blogs_api
+        self.BLOGS_URL = self.BASE_URL + '/sites/{0}/pages/blogs'
+        self.BLOG_POSTS_URL = self.BLOGS_URL + '/{1}/posts'
+
+        # List API URLs
+        self.LIST_INDEX_URL = self.BASE_URL + '/lists' + self.PAGINATE_QUERY
+        self.GET_LIST_URL = ''.join((self.BASE_URL, '/lists/{list_id}/people',
+                                     self.PAGINATE_QUERY))
+        # https://nationbuilder.com/basic_pages_api
+        self.PAGES_URL = self.BASE_URL + '/sites/{0}/pages/basic_pages'
         # People API URLs.
         self.GET_PEOPLE_URL = self.BASE_URL + '/people'
         self.GET_PERSON_URL = self.GET_PEOPLE_URL + '/{0}'
@@ -87,31 +98,21 @@ class NationBuilderApi(object):
                            + '&distance={dist}')
         self.UPDATE_PERSON_URL = self.GET_PERSON_URL
         self.REGISTER_PERSON_URL = self.GET_PERSON_URL + "/register"
-        # Tags API URLs
-        self.PERSON_TAGS_URL = self.GET_PERSON_URL + "/taggings"
-        self.REMOVE_TAG_URL = self.PERSON_TAGS_URL + "/{1}"
-        self.LIST_TAGS_URL = self.BASE_URL + "/tags" + self.PAGINATE_QUERY
-        self.GET_BY_TAG_URL = ''.join((self.BASE_URL, "/tags/{tag}/people",
-                                       self.PAGINATE_QUERY))
-        # List API URLs
-        self.LIST_INDEX_URL = self.BASE_URL + '/lists' + self.PAGINATE_QUERY
-        self.GET_LIST_URL = ''.join((self.BASE_URL, '/lists/{list_id}/people',
-                                     self.PAGINATE_QUERY))
+
         # Contacts API URLs
         self.GET_CONTACT_URL = self.GET_PERSON_URL + "/contacts"
         self.CONTACT_TYPES_URL = self.BASE_URL + '/settings/contact_types'
         self.UPDATE_CONTACT_TYPE_URL = self.CONTACT_TYPES_URL + '/{id}'
         self.CONTACT_METHODS_URL = self.BASE_URL + '/settings/contact_methods'
         self.CONTACT_STATUS_URL = self.BASE_URL + '/settings/contact_statuses'
-
         # https://nationbuilder.com/sites_api
         self.SITES_URL = self.BASE_URL + '/sites'
-
-        # https://nationbuilder.com/basic_pages_api
-        self.PAGES_URL = self.BASE_URL + '/sites/{0}/pages/basic_pages'
-
-        # https://nationbuilder.com/blogs_api
-        self.BLOGS_URL = self.BASE_URL + '/sites/{0}/pages/blogs'
+        # Tags API URLs
+        self.PERSON_TAGS_URL = self.GET_PERSON_URL + "/taggings"
+        self.REMOVE_TAG_URL = self.PERSON_TAGS_URL + "/{1}"
+        self.LIST_TAGS_URL = self.BASE_URL + "/tags" + self.PAGINATE_QUERY
+        self.GET_BY_TAG_URL = ''.join((self.BASE_URL, "/tags/{tag}/people",
+                                       self.PAGINATE_QUERY))
 
         self.USER_AGENT = "nbpy/0.2"
 
@@ -127,11 +128,15 @@ class NationBuilderApi(object):
         self._check_response(response=response, attempted_action=None, url=url)
         return response.json()
 
-    def _check_response(self, response: requests.Response, attempted_action: Optional[str], url=None):
+    def _check_response(self, response: requests.Response, attempted_action: Optional[str], url=None,
+                        raise_on_duplicate_slugs=False):
         """Log a warning if this is not a 200 OK response,
         otherwise log the response at debug level"""
         if response.status_code < 200 or response.status_code > 299:
-            self._raise_error(attempted_action or "Unknown action", response, url)
+            if not raise_on_duplicate_slugs and "slug has already been taken" in response.text:
+                log.debug("We shall not raise an error for this error: %s", response.text)
+            else:
+                self._raise_error(attempted_action or "Unknown action", response, url)
         else:
             log.debug("Request to %s successful.",
                       url or attempted_action or "Unknown")

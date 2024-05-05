@@ -42,4 +42,7 @@ class Pages(NationBuilderApi):
         self._authorize()
         url = self.PAGES_URL.format(site_slug)
         response = self.session.post(url, headers=self.HEADERS, json={page_type: page})
-        return response.json()
+        if response.ok:
+            return response.json()
+        else:
+            return None
